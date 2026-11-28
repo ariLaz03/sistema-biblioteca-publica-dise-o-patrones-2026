@@ -6,6 +6,7 @@ from biblioteca.reservas import EstadoReserva, Observador, SujetoDisponibilidad
 from biblioteca.usuarios import Usuario
 
 
+# ---------- Patrón Observer en sí (con observadores falsos) ----------
 class Espia(Observador):
     def __init__(self):
         self.llamadas = 0
