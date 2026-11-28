@@ -20,6 +20,9 @@ class EstadoLibro(ABC):
     def liberar(self, libro) -> None:
         raise OperacionInvalida(f"No hay reserva que liberar en un libro {self.nombre.lower()}")
 
+    def vencer(self, libro) -> None:
+        raise OperacionInvalida(f"Solo un libro prestado puede vencer, no uno {self.nombre.lower()}")
+
 
 class Disponible(EstadoLibro):
     nombre = "Disponible"
@@ -38,6 +41,18 @@ class Prestado(EstadoLibro):
     def devolver(self, libro) -> None:
         libro._cambiar_estado(Disponible())
         libro.notificar_disponible()          # Observer: avisa a quienes reservaron
+
+    def vencer(self, libro) -> None:
+        libro._cambiar_estado(Vencido())
+
+
+class Vencido(EstadoLibro):
+    """Libro prestado cuyo plazo ya expiró. Solo admite la devolución."""
+    nombre = "Vencido"
+
+    def devolver(self, libro) -> None:
+        libro._cambiar_estado(Disponible())
+        libro.notificar_disponible()
 
 
 class Reservado(EstadoLibro):

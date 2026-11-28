@@ -20,7 +20,9 @@ class Prestamo:
     @property
     def fecha_limite(self) -> date:
         return self.fecha_prestamo + timedelta(
-            days=self.libro.DIAS_PRESTAMO + self.detalle.dias_extra())
+            days=self.libro.DIAS_PRESTAMO
+            + self.usuario.politica.dias_adicionales   # Factory Method: según tipo de usuario
+            + self.detalle.dias_extra())               # Decorator: servicios adicionales
 
     @property
     def activo(self) -> bool:

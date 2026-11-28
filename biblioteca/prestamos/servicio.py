@@ -4,13 +4,14 @@ from typing import Callable, Iterable, Optional
 
 from ..errores import BibliotecaError
 from ..usuarios import Usuario
+from .estados import Prestado
 from .multas import CalculadoraMulta
 from .prestamo import Prestamo
 
 
 class ServicioPrestamos:
     def __init__(self, calculadora: Optional[CalculadoraMulta] = None,
-                 reservas=None, max_por_usuario: int = 3) -> None:
+                 reservas=None, max_por_usuario: Optional[int] = None) -> None:
         self.calculadora = calculadora or CalculadoraMulta()
         self.reservas = reservas
         self.max_por_usuario = max_por_usuario
@@ -20,9 +21,10 @@ class ServicioPrestamos:
                 servicios: Iterable[Callable] = ()) -> Prestamo:
         hoy = hoy or date.today()
         if usuario.deuda > 0:
-            raise BibliotecaError(f"{usuario.nombre} tiene multas pendientes: {usuario.deuda:.2f}")
-        if len(self.activos(usuario)) >= self.max_por_usuario:
-            raise BibliotecaError(f"Máximo de {self.max_por_usuario} préstamos activos")
+            raise BibliotecaError(f"{usuario.nombre} tiene multas pendientes: S/ {usuario.deuda:.2f}")
+        limite = self.max_por_usuario or usuario.politica.max_prestamos   # según tipo de usuario
+        if len(self.activos(usuario)) >= limite:
+            raise BibliotecaError(f"Máximo de {limite} préstamos activos para un {usuario.tipo.lower()}")
         libro.prestar(usuario)                         # State valida la operación
         prestamo = Prestamo(libro, usuario, hoy)
         for servicio in servicios:                     # Decorator
@@ -52,3 +54,15 @@ class ServicioPrestamos:
     def vencidos(self, hoy: Optional[date] = None) -> list[Prestamo]:
         hoy = hoy or date.today()
         return [p for p in self.activos() if p.fecha_limite < hoy]
+
+    def actualizar_vencidos(self, hoy: Optional[date] = None) -> list[Prestamo]:
+        """Pasa a estado Vencido los libros prestados cuyo plazo expiró y avisa al usuario."""
+        hoy = hoy or date.today()
+        nuevos = []
+        for p in self.activos():
+            if p.fecha_limite < hoy and isinstance(p.libro.estado, Prestado):
+                p.libro.marcar_vencido()
+                p.usuario.recibir(f"Tu préstamo de «{p.libro.titulo}» venció el "
+                                  f"{p.fecha_limite}. Devuélvelo para evitar más multa.")
+                nuevos.append(p)
+        return nuevos
